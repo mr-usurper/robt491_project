@@ -10,7 +10,7 @@ Arduino code controls the sensors and the conveyor. It also sends signal to Pyth
 Python is used to handle Arduino's output data, motors for a door, and a GUI of the system.
 
 ## Authors
-Azamat Abdikarimov
-Soibkhon Khajikhanov
-Mazhit Zharaspay
+Azamat Abdikarimov\
+Soibkhon Khajikhanov\
+Mazhit Zharaspay\
 Zhanat Kappassov - supervisor
