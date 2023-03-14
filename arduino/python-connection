@@ -1,0 +1,27 @@
+//Variables to store temp and hum data
+int fsr;
+int laser1;
+int laser2;
+
+
+void setup()
+{
+  Serial.begin(9600);  
+}
+
+void loop()
+{
+    
+    fsr = 100;
+    laser1 = 10;
+    laser2 = 10;
+
+    //Print temp and hum values onto serial monitor
+    //x is used as a delimiter
+    Serial.print(fsr);
+    Serial.print("x");
+    Serial.print(laser1);
+    Serial.print("x");
+    Serial.println(laser2);
+    delay(2000);  
+}
