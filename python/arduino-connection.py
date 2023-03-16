@@ -1,39 +1,51 @@
 import serial
-import time
-import schedule
+#import keyboard
+
+item = int(0);
+value1 = 0;
+value2 = 0;
+thresh1 = 50;
+thresh2 = 50;
 
 
-def main_func():
-    arduino = serial.Serial('/dev/ttyACM0', 9600)
-    print('Established serial connection to Arduino')
-    arduino_data = arduino.readline()
 
-    decoded_values = str(arduino_data[0:len(arduino_data)].decode("utf-8"))
-    list_values = decoded_values.split('x')
+def readserial(comport, baudrate):
+    ser = serial.Serial(comport, baudrate, timeout=0.1)
 
-    for item in list_values:
-        list_in_floats.append(float(item))
+    while True:
+        data = ser.readline().decode().strip()
+        if data:
+            try:
+                dataint = int(data)
+                if dataint == 13:
+                    print("No parcel on conveyor")
+                    break
+                elif dataint == 69:
+                    print("The process is running")
+                    break
+                elif dataint == 77:
+                    print("Parcel is stored")
+                    break
 
-    print(f'Collected readings from Arduino: {list_in_floats}')
+            except ValueError:
+                print("Data is not a valid integer")
 
-    arduino_data = 0
-    list_in_floats.clear()
-    list_values.clear()
-    arduino.close()
-    print('Connection closed')
-    print('<----------------------------->')
+if __name__ == '__main__':
+    readserial('/dev/ttyACM0', 9600)
 
 
-# ----------------------------------------Main Code------------------------------------
-# Declare variables to be used
-list_values = []
-list_in_floats = []
-
-print('Program started')
-
-# Setting up the Arduino
-schedule.every(1).seconds.do(main_func)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+'''
+if item == 0:
+    if value1 > thresh1:
+        print("no item")
+    elif value1 < thresh1:
+        print("SAW ITEM")
+elif item == 1:
+    if value2 > thresh2:
+        print("RUN")
+    elif value2 < thresh2:
+        print("DONE DEAL")
+elif item == 2:
+    print("no item")
+    
+'''
