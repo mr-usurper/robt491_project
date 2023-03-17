@@ -4,6 +4,19 @@ import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QPlainTextEdit
 from PyQt5.QtCore import Qt, QSize, QProcess
+import keyboard
+import door2
+import time
+
+def barCode():
+    input_str = ""
+    while True:
+        event = keyboard.read_event()
+        if event.name == 'enter':
+            break
+        elif event.event_type == 'down':
+            input_str += event.name.replace("down", "")
+    return input_str
 
 class CustomDialog(QDialog):
     def __init__(self):
@@ -31,24 +44,6 @@ class MyWindow(QMainWindow):
         super(MyWindow,self).__init__()
         self.initUI()
 
-    '''
-    def b1_clicked(self):
-        if self.editor.text() == 'asdf':
-            #print("wow")
-            self.label.setText("Scanned, opening the door, weighting the parcel")
-        else:
-            self.label.setText("No such parcel in DB")
-        self.update()
-
-    def b2_clicked(self):
-        if self.editor2.text() == '1kg':
-            self.label.setText("The weight is 1kg")
-        else:
-            self.label.setText("The parcel is overweight")
-            CustomDialog().exec()
-        self.update()
-    '''
-
     def message(self, s):
         self.text.appendPlainText(s)
 
@@ -59,6 +54,8 @@ class MyWindow(QMainWindow):
         self.p.readyReadStandardError.connect(self.handle_stderr)
         self.p.stateChanged.connect(self.handle_state)
         self.p.start("python3", ['/home/lenovo/Downloads/ROBT/491/program/python/gui/connection_v2.py'])
+        self.update()
+        
  
     def handle_stderr(self):
         data = self.p.readAllStandardError()
@@ -71,6 +68,7 @@ class MyWindow(QMainWindow):
         stdout = bytes(data).decode("utf8")
         self.message(stdout)
         self.label.setText(stdout)
+        self.update()
 
     def handle_state(self, state):
         states = {
@@ -80,6 +78,13 @@ class MyWindow(QMainWindow):
         }
         state_name = states[state]
         self.message(f"State changed: {state_name}")
+        
+
+    def b4_clicked(self):
+        data=connection_v2.readserial()
+        self.label.setText(str(data))
+        if data == 69:
+            door2.opening(2)
 
     def initUI(self):
         self.setGeometry(500, 500, 1000, 1000)
@@ -94,6 +99,8 @@ class MyWindow(QMainWindow):
         self.editor = QtWidgets.QLineEdit(self)
         self.editor.move(50, 50)
         self.editor.adjustSize()
+        self.editor.setText(input)
+        
 
         self.label2 = QtWidgets.QLabel(self)
         self.label2.setText("State of the process:")
@@ -104,26 +111,19 @@ class MyWindow(QMainWindow):
         self.label.setText("Waiting for scan")
         self.label.move(50,200)
         self.label.adjustSize()
-
-        '''
-        self.b1 = QtWidgets.QPushButton(self)
-        self.b1.move(50, 125)
-        self.b1.setText("Scanner")
-        self.b1.clicked.connect(self.b1_clicked)
-        self.b1.adjustSize()
         
-        self.b2 = QtWidgets.QPushButton(self)
-        self.b2.move(400, 125)
-        self.b2.setText("Weight")
-        self.b2.clicked.connect(self.b2_clicked)
-        self.b2.adjustSize()
-        '''
 
         self.b3 = QtWidgets.QPushButton(self)
         self.b3.move(590, 50)
         self.b3.setText("ARDUINO")
         self.b3.clicked.connect(self.b3_clicked)
         self.b3.adjustSize()
+
+        self.b4 = QtWidgets.QPushButton(self)
+        self.b4.move(300, 50)
+        self.b4.setText("button")
+        self.b4.clicked.connect(self.b4_clicked)
+        self.b4.adjustSize()
 
     def update(self):
         self.label.adjustSize()
@@ -136,7 +136,18 @@ def window():
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
+    input = ""
+    while(input != "4870001157913"):
+        input = barCode()
+        print(input)
+        if input == "4870001157913":
+            print("nia accepted")
+        else:
+            print("wrong nia")
+            input = ""
+    door2.opening(1)
+    time.sleep(1)
+    door2.opening(2)
+
     window()
-    connection_v2.readserial(comopert, daue)
-    
     
