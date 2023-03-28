@@ -4,6 +4,7 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QPlainTextEdit
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import *
+import connection_v2
 
 logging.basicConfig(filename="logfile.txt",
                     format='%(levelname)-8s %(asctime)s %(message)s ',
@@ -71,10 +72,25 @@ class MyWindow(QMainWindow):
         self.update()
     
     def b3_clicked(self):
-        self.message("Starting process.")
-        logger.info("Starting process.") 
-
-        self.label2.setText("Starting process")
+        data = connection_v2.readserial()
+        self.label.setText(str(data))
+        
+        while data == 13:
+            data = connection_v2.readserial()
+            self.label.setText(str(data))
+            self.message("Waiting for parcel.")
+            logger.info("Waiting for parcel.") 
+            print("13")
+            self.label2.setText("Waiting for parcel.")
+        
+        
+        while data == 69:
+            data = connection_v2.readserial()
+            self.label.setText(str(data))
+            self.message("Starting process.")
+            logger.info("Starting process.") 
+            print("69")
+            self.label2.setText("Starting process")
 
     def message(self, s):
         self.text.appendPlainText(s)
