@@ -52,20 +52,8 @@ class Ui_MainWindow(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
-        self.label2 = QtWidgets.QLineEdit(self.centralwidget)
-        self.label2.setGeometry(QtCore.QRect(400, 50, 211, 41))
-        self.label2.setFont(font)
-        #self.label2.setObjectName("label2")
-        self.label2.setText("waiting")
-        self.label2.textChanged(self.onChange)
-
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-    def onChange(self):
-        print("changed")
-        #self.label2.setText(text)
-        self.label2.adjustSize()
 
 
     def retranslateUi(self, MainWindow):
@@ -78,27 +66,6 @@ class Ui_MainWindow(object):
         # User Code
         self.timeout = 0
         self.check_serial_event()
-
-    '''
-    def check_serial_event(self):
-        print("serial")
-        self.timeout += 1
-        print (self.timeout)
-        serial_thread = threading.Timer(1, self.check_serial_event)
-        if ser.is_open == True:
-            serial_thread.start()
-            if ser.in_waiting:
-
-                data = ser.readline().decode().strip()
-                    
-                distance = data
-                self.labelDistance.setText(distance)
-                # print (distance)
-                self.timeout = 0
-
-        if self.timeout >= 3:
-            ser.close()
-    '''
 
     
     def check_serial_event(self):
