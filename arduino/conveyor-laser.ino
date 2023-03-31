@@ -12,8 +12,8 @@ int greenpin = 12;
 int redpin = 13; 
 
 int item = 0; 
-int thresh1 = 30;
-int thresh2 = 40;
+int thresh1;
+int thresh2;
 int gogo = 0;
 
 millisDelay pinDelay;
@@ -43,16 +43,16 @@ void setup() {
 void loop() {
   int value1 = map(analogRead(A3), 0, 1023, 100, 0);
   int value2 = map(analogRead(A0), 0, 1023, 100, 0);
+
+  if (gogo == 0) {
+    thresh1 = value1 - 5;
+    thresh2 = value2 - 5;
+  }
   
   if (pinDelay.justFinished()) {
     gogo = 1;
   } else if (gogo == 1) {
-    int value1 = map(analogRead(A3), 0, 1023, 100, 0);
-    int value2 = map(analogRead(A0), 0, 1023, 100, 0);
-  
-    //Serial.print(value1);
-    //Serial.print(" ");
-    //Serial.println(value2);
+
     delay(500);
   
     if (item == 0) {
