@@ -1,4 +1,4 @@
-import connection_v2
+import arduino_connection
 import serial
 import sys
 from PyQt5 import QtWidgets
