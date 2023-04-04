@@ -32,20 +32,3 @@ def readserial(comport, baudrate):
 
 if __name__ == '__main__':
     readserial('/dev/ttyACM0', 9600)
-
-
-'''
-if item == 0:
-    if value1 > thresh1:
-        print("no item")
-    elif value1 < thresh1:
-        print("SAW ITEM")
-elif item == 1:
-    if value2 > thresh2:
-        print("RUN")
-    elif value2 < thresh2:
-        print("DONE DEAL")
-elif item == 2:
-    print("no item")
-    
-'''
