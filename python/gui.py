@@ -1,153 +1,274 @@
-import arduino_connection
-import serial
 import sys
-from PyQt5 import QtWidgets
+import logging
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QPlainTextEdit
-from PyQt5.QtCore import Qt, QSize, QProcess
-import keyboard
-import door2
-import time
-
-def barCode():
-    input_str = ""
-    while True:
-        event = keyboard.read_event()
-        if event.name == 'enter':
-            break
-        elif event.event_type == 'down':
-            input_str += event.name.replace("down", "")
-    return input_str
-
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
+from PyQt5.QtCore import QIODevice
+from PyQt5.QtGui import *
+import door
+ 
+logging.basicConfig(filename="logfile.txt",
+                    format='%(levelname)-8s %(asctime)s %(message)s ',
+                    filemode='w', datefmt="%d/%m/%Y %H:%M:%S")
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+ 
+serial = QSerialPort()
+serial.setBaudRate(9600)
+serial.setPortName('COM10')
+global process
+global weight
+process = 0
+weight = 0
+data = [0, 0]
+ 
+ 
 class CustomDialog(QDialog):
     def __init__(self):
-        
         super().__init__()
-
-        #self.p = None  # Default empty value.
-
+ 
         self.setWindowTitle("Overweight")
-
+ 
         QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-
+ 
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
-
+ 
         self.layout = QVBoxLayout()
         message = QLabel("Your parcel is overweight, pay up")
         self.layout.addWidget(message)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
-
+ 
 class MyWindow(QMainWindow):
     def __init__(self):
         super(MyWindow,self).__init__()
         self.initUI()
-
+        self.buffer = ""
+        data = open("baza.txt", "r")
+        barcodes = data.read()
+        barcodeslist = barcodes.split("\n")
+ 
+ 
+    def keyPressEvent(self, event):
+        global process
+        if process == 0:
+            data = open("baza.txt", "r")
+            barcodes = data.read()
+            barcodeslist = barcodes.split("\n")
+            if event.key() == Qt.Key_Return:
+                print("Input received:", self.buffer)
+                self.buffer = ""
+            else:
+                self.buffer += event.text()
+                self.label2.setText(self.buffer)
+            x = ""
+            for x in barcodeslist:
+                input = self.buffer
+                if input == x:
+                    print("nia accepted")
+                    door.opening(1)
+                    serial.open(QIODevice.ReadWrite)
+                    serial.readyRead.connect(self.onRead)
+                    weight = 0
+                    process = 1
+                    break
+                else:
+                    #print("wrong nia")
+                    input = ""    
+ 
+ 
+    def b1_clicked(self):
+        self.message("Scanning a parcel.")
+        logger.info("Scanning a parcel.")
+ 
+        if self.editor.text() == 'asdf':
+            self.label2.setText("Opening door, weighting parcel")
+ 
+            self.message("The parcel is in DB.")
+            logger.info("The parcel is in DB.") 
+ 
+        else:
+            self.label2.setText("No such parcel in DB")
+ 
+            self.message("No such parcel in DB.")
+            logger.info("No such parcel in DB.")
+        self.update()
+ 
+ 
+    def b2_clicked(self):
+        print("test")
+        self.message("Weighting parcels.")
+        logger.info("Weighting parcels.") 
+ 
+        if self.editor2.text() == '1kg':
+            self.label2.setText("The weight is 1kg")
+ 
+            self.message("The weight is correct.")
+            logger.info("The weight is correct.") 
+        else:
+            self.label2.setText("The parcel is overweight")
+ 
+            self.message("The parcel is overweight.")
+            logger.warning("The parcel is overweight.") 
+ 
+ 
+        self.update()
+ 
+ 
+    def b3_clicked(self):
+        print("started")
+        serial.open(QIODevice.ReadWrite)
+        serial.readyRead.connect(self.onRead)
+        print("set up")
+ 
+ 
+    def onRead(self):
+        global weight
+        #print("onRead")
+ 
+        if not serial.canReadLine(): return    
+        rx = serial.readLine()
+        rxs = str(rx, 'utf-8').strip()
+        try:
+            data = rxs.split(',')
+        except:
+            print("ket nahu")
+        print(rxs)  
+        #print(data[1])
+ 
+        if weight == 0:
+            if int(data[1]) < 300 and int(data[1]) > 1000:
+                self.label2.setText("Weight the parcel.")
+                self.message("Weight the parcel.")
+                logger.warning("Weight the parcel.") 
+                weight = 0
+ 
+            elif int(data[1]) > 300 and int(data[1]) < 600:
+                self.label2.setText("The weight is correct.")
+                self.message("The weight is correct.")
+                logger.info("The weight is correct.")
+                weight = 1
+ 
+            elif int(data[1]) > 600 and int(data[1]) < 1000:
+                self.label2.setText("The parcel is overweight.")
+                self.message("The parcel is overweight.")
+                logger.warning("The parcel is overweight.") 
+                weight = 2
+                CustomDialog().exec()
+ 
+        elif weight == 1:
+            if data[0] == '1313':
+                self.label2.setText("No parcel.")
+                self.message("No parcel.")
+                logger.info("No parcel.")
+            elif data[0] == '6969':
+                door.opening(2)
+                self.label2.setText("Process started.")
+                self.message("Process started.")
+                logger.info("Process started.")
+ 
+            elif data[0] == '7777':
+                self.label2.setText("Package sorted.")
+                self.message("Package sorted.")
+                logger.info("Package sorted.")
+ 
+ 
     def message(self, s):
         self.text.appendPlainText(s)
-
-    def b3_clicked(self):
-        self.message("Executing process.")
-        self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
-        self.p.readyReadStandardOutput.connect(self.handle_stdout)
-        self.p.readyReadStandardError.connect(self.handle_stderr)
-        self.p.stateChanged.connect(self.handle_state)
-        self.p.start("python3", ['/home/lenovo/Downloads/ROBT/491/program/python/gui/connection_v2.py'])
-        self.update()
-        
  
-    def handle_stderr(self):
-        data = self.p.readAllStandardError()
-        stderr = bytes(data).decode("utf8")
-        self.message(stderr)
-        
-
-    def handle_stdout(self):
-        data = self.p.readAllStandardOutput()
-        stdout = bytes(data).decode("utf8")
-        self.message(stdout)
-        self.label.setText(stdout)
-        self.update()
-
-    def handle_state(self, state):
-        states = {
-            QProcess.NotRunning: 'Not running',
-            QProcess.Starting: 'Starting',
-            QProcess.Running: 'Running',
-        }
-        state_name = states[state]
-        self.message(f"State changed: {state_name}")
-        
-
-    def b4_clicked(self):
-        data=connection_v2.readserial()
-        self.label.setText(str(data))
-        if data == 69:
-            door2.opening(2)
-
     def initUI(self):
-        self.setGeometry(500, 500, 1000, 1000)
+ 
+        self.setGeometry(300, 300, 1500, 1500)
         self.setWindowTitle("Logistic Box")
-        self.setFixedSize(QSize(1000, 500))
-
-        self.text = QPlainTextEdit(self)
+        self.setFixedSize(QSize(1200, 800))
+ 
+        self.text = QPlainTextEdit(self) #logging
         self.text.setReadOnly(True)
-        self.text.move(500, 150)
+        self.text.move(525, 50)
         self.text.adjustSize()
-
+        self.text.resize(225, 330)
+        '''
         self.editor = QtWidgets.QLineEdit(self)
         self.editor.move(50, 50)
-        self.editor.adjustSize()
-        self.editor.setText(input)
-        
-
-        self.label2 = QtWidgets.QLabel(self)
-        self.label2.setText("State of the process:")
-        self.label2.move(50,150)
-        self.label2.adjustSize()
-        
-        self.label = QtWidgets.QLabel(self)
-        self.label.setText("Waiting for scan")
-        self.label.move(50,200)
-        self.label.adjustSize()
-        
-
+        self.editor.setFont(QFont('Arial', 18))
+        self.editor.resize(225, 40)
+ 
+        self.editor2 = QtWidgets.QLineEdit(self)
+        self.editor2.move(50, 150)
+        self.editor2.setFont(QFont('Arial', 18))
+        self.editor2.resize(225, 40)
+ 
+ 
+        self.b1 = QtWidgets.QPushButton(self)
+        self.b1.move(325, 50)
+        self.b1.setFont(QFont('Arial', 18))
+        self.b1.setText("Scanner")
+        self.b1.clicked.connect(self.b1_clicked)
+        self.b1.resize(150, 40)
+        self.b1.setStyleSheet("QLabel::hover"
+                            "{"
+                            "background-color : lightgreen;"
+                            "}")
+ 
+        self.b2 = QtWidgets.QPushButton(self)
+        self.b2.move(325, 150)
+        self.b2.setFont(QFont('Arial', 18))
+        self.b2.setText("Weight")
+        self.b2.clicked.connect(self.b2_clicked)
+        self.b2.resize(150, 40)
+ 
+ 
         self.b3 = QtWidgets.QPushButton(self)
-        self.b3.move(590, 50)
-        self.b3.setText("ARDUINO")
+        self.b3.move(325, 250)
+        self.b3.setFont(QFont('Arial', 18))
+        self.b3.setText("Start")
         self.b3.clicked.connect(self.b3_clicked)
-        self.b3.adjustSize()
-
-        self.b4 = QtWidgets.QPushButton(self)
-        self.b4.move(300, 50)
-        self.b4.setText("button")
-        self.b4.clicked.connect(self.b4_clicked)
-        self.b4.adjustSize()
-
+        self.b3.resize(150, 40)
+        self.b3.setStyleSheet("QPushButton"
+                             "{"
+                             "background-color : lightblue;"
+                             "}"
+                             "QPushButton::pressed"
+                             "{"
+                             "background-color : red;"
+                             "}"
+                             )
+        '''
+        self.label = QtWidgets.QLabel(self)
+        self.label.setText("State of the process:")
+        self.label.setFont(QFont('Arial', 18))
+        self.label.move(50, 255)
+        self.label.adjustSize()
+        #self.label.setAlignment(QtCore.Qt.AlignCenter)
+ 
+        self.label2 = QtWidgets.QLabel(self)
+        self.label2.setText("Waiting for scan")
+        self.label2.setFont(QFont('Arial', 20))
+        self.label2.move(50, 340)
+        self.label2.adjustSize()
+        self.label2.resize(425, 40)
+        self.label2.setStyleSheet("border: 1px solid black;")
+ 
+        self.label3 = QtWidgets.QLabel(self)
+        self.label3.setText("1")
+        self.label3.move(750,450)
+        self.label3.adjustSize()
+ 
+ 
     def update(self):
         self.label.adjustSize()
-
-
+ 
+ 
 def window():
     app = QApplication(sys.argv)
     win = MyWindow()
     win.show()
     sys.exit(app.exec_())
-
-if __name__ == '__main__':
-    input = ""
-    while(input != "4870001157913"):
-        input = barCode()
-        print(input)
-        if input == "4870001157913":
-            print("nia accepted")
-        else:
-            print("wrong nia")
-            input = ""
-    door2.opening(1)
-    time.sleep(1)
-    door2.opening(2)
-
-    window()
-    
+ 
+process = 0
+weight = 0
+door.opening(2)
+window()
