@@ -1,5 +1,6 @@
 import sys
 import logging
+import csv
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QPlainTextEdit
 from PyQt5.QtCore import Qt, QSize
@@ -17,11 +18,13 @@ logger.setLevel(logging.DEBUG)
 serial = QSerialPort()
 serial.setBaudRate(9600)
 serial.setPortName('COM10')
-global process
+global process  
 global weight
+global Rdata
+Rdata = [0,0]
 process = 0
 weight = 0
-data = [0, 0]
+ 
  
  
 class CustomDialog(QDialog):
@@ -45,41 +48,68 @@ class CustomDialog(QDialog):
 class MyWindow(QMainWindow):
     def __init__(self):
         super(MyWindow,self).__init__()
+        global weightR
+        weightR = 3
         self.initUI()
         self.buffer = ""
-        data = open("baza.txt", "r")
-        barcodes = data.read()
-        barcodeslist = barcodes.split("\n")
+        serial.open(QIODevice.ReadWrite)
+        serial.readyRead.connect(self.onRead)        
+        # read CSV file and store the data in a dictionary
+        self.data = {}
+        with open('baza.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                name = row[0]
+                codes = row[1].split('|')
+                weight = row[2]
+                self.data[name] = {'codes': codes, 'weight': weight}
  
+        print(self.data)  
  
     def keyPressEvent(self, event):
-        global process
-        if process == 0:
-            data = open("baza.txt", "r")
-            barcodes = data.read()
-            barcodeslist = barcodes.split("\n")
-            if event.key() == Qt.Key_Return:
-                print("Input received:", self.buffer)
-                self.buffer = ""
+        if event.key() == Qt.Key_Return:
+            # split the scanned data by '|' character
+            name, code = self.buffer.split('|')
+            self.findData(name, code)
+            self.buffer = ""
+        else:
+            self.buffer += event.text()
+ 
+    def findData(self, name, code):
+ 
+ 
+ 
+        global Rdata
+        global weightR
+        sumWeight = 0
+        # check if the name exists in the data dictionary
+        if name in self.data:
+            codes = self.data[name]['codes']
+            weight = int(self.data[name]['weight'])
+ 
+            if code in codes:
+                codes.remove(code)
+                print(f"Code {code} found for product {name} {len(codes)} left")
+                self.label2.setText(f"{len(codes)} left")
+                door.opening(1)
+                scale = 0
+                if int(Rdata[1]) > 300 and int(Rdata[1]) < 1000:
+                        sumWeight = int(Rdata[1])+sumWeight
+                        print(sumWeight)
+                        scale == 1
+                if len(codes) == 0:
+                    print(f"All codes for product {name} have been scanned")
+                    self.label2.setText("All codes are scanned")
+                    weightR = 0
+                    if weight < sumWeight:
+                        print("pay nigga")
+                    else:
+                        print("nigga u aight")
+ 
             else:
-                self.buffer += event.text()
-                self.label2.setText(self.buffer)
-            x = ""
-            for x in barcodeslist:
-                input = self.buffer
-                if input == x:
-                    print("nia accepted")
-                    door.opening(1)
-                    serial.open(QIODevice.ReadWrite)
-                    serial.readyRead.connect(self.onRead)
-                    weight = 0
-                    process = 1
-                    break
-                else:
-                    #print("wrong nia")
-                    input = ""    
- 
- 
+                print(f"Code {code} not found for product {name}")
+        else:
+            print(f"Product {name} not found in the database")
     def b1_clicked(self):
         self.message("Scanning a parcel.")
         logger.info("Scanning a parcel.")
@@ -126,51 +156,54 @@ class MyWindow(QMainWindow):
  
  
     def onRead(self):
-        global weight
+        global weightR
+        global Rdata
         #print("onRead")
  
-        if not serial.canReadLine(): return    
+        if not serial.canReadLine(): return     # ������� ���� ������ ������
         rx = serial.readLine()
         rxs = str(rx, 'utf-8').strip()
         try:
-            data = rxs.split(',')
+            Rdata = rxs.split(',')  
         except:
             print("ket nahu")
-        print(rxs)  
+        #print(rxs) 
+        print(Rdata)
+ 
         #print(data[1])
  
-        if weight == 0:
-            if int(data[1]) < 300 and int(data[1]) > 1000:
-                self.label2.setText("Weight the parcel.")
-                self.message("Weight the parcel.")
-                logger.warning("Weight the parcel.") 
-                weight = 0
+        if weightR == 0:
+            if int(Rdata[1]) < 300 and int(Rdata[1]) > 1000:
+                self.label2.setText("weight the parcel.")
+                self.message("weight the parcel.")
+                logger.warning("weight the parcel.") 
+                weightR = 0
  
-            elif int(data[1]) > 300 and int(data[1]) < 600:
-                self.label2.setText("The weight is correct.")
-                self.message("The weight is correct.")
-                logger.info("The weight is correct.")
-                weight = 1
+            elif int(Rdata[1]) > 300 and int(Rdata[1]) < 600:
+                self.label2.setText("the weight is correct.")
+                self.message("the weight is correct.")
+                logger.info("the weight is correct.")
+                weightR = 1
  
-            elif int(data[1]) > 600 and int(data[1]) < 1000:
-                self.label2.setText("The parcel is overweight.")
-                self.message("The parcel is overweight.")
-                logger.warning("The parcel is overweight.") 
-                weight = 2
-                CustomDialog().exec()
+            elif int(Rdata[1]) > 600 and int(Rdata[1]) < 1000:
+                self.label2.setText("the parcel is overweight.")
+                self.message("the parcel is overweight.")
+                logger.warning("the parcel is overweight.") 
+                weightR = 2
+                customdialog().exec()
  
-        elif weight == 1:
-            if data[0] == '1313':
-                self.label2.setText("No parcel.")
-                self.message("No parcel.")
-                logger.info("No parcel.")
-            elif data[0] == '6969':
+        elif weightR == 1:
+            if Rdata[0] == '1313':
+                self.label2.setText("no parcel.")
+                self.message("no parcel.")
+                logger.info("no parcel.")
+        if Rdata[0] == '6969':
                 door.opening(2)
                 self.label2.setText("Process started.")
                 self.message("Process started.")
                 logger.info("Process started.")
  
-            elif data[0] == '7777':
+        elif Rdata[0] == '7777':
                 self.label2.setText("Package sorted.")
                 self.message("Package sorted.")
                 logger.info("Package sorted.")
